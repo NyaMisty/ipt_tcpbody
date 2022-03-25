@@ -17,32 +17,22 @@
 #include <net/tcp.h>
 
 #include <linux/netfilter/x_tables.h>
-#include "ipt_TWIN.h"
+#include "ipt_TBODY.h"
 
-MODULE_AUTHOR("Harald Welte <laforge@netfilter.org>");
-MODULE_AUTHOR("Vadim Fedorenko <junjunk@fromru.com>");
-MODULE_DESCRIPTION("Xtables: TCPWIN field modification target");
+MODULE_AUTHOR("Misty <misty@misty.moe>");
+MODULE_DESCRIPTION("Xtables: TCPBODY length modification target");
 MODULE_LICENSE("GPL");
 
-static inline unsigned int
-optlen(const u_int8_t *opt, unsigned int offset)
-{
-	/* Beware zero-length options: make finite progress */
-	if (opt[offset] <= TCPOPT_NOP || opt[offset+1] == 0)
-		return 1;
-	else
-		return opt[offset+1];
-}
 
 static unsigned int
-twin_tg(struct sk_buff *skb, const struct xt_action_param *par)
+tbody_tg(struct sk_buff *skb, const struct xt_action_param *par)
 {
 	struct tcphdr *tcph;
 	struct iphdr *iph;
-	const struct ipt_TWIN_info *info = par->targinfo;
+	const struct ipt_TBODY_info *info = par->targinfo;
 	int offset, len;
     int i;
-	int tcp_hdrlen;
+	int tcp_hdrlen, tcp_datalen;
 	u_int8_t *opt;
 
 	if (skb_ensure_writable(skb, skb->len))
@@ -56,20 +46,14 @@ twin_tg(struct sk_buff *skb, const struct xt_action_param *par)
 	// get tcp hdr here
 	tcph = tcp_hdr(skb);
 	tcp_hdrlen = tcph->doff * 4;
-
-	tcph->window = htons(info->win);
 	
-	opt = (u_int8_t *)tcph;
-	for (i = sizeof(struct tcphdr); i <= tcp_hdrlen - TCPOLEN_WINDOW; i += optlen(opt, i)) {
-		if (opt[i] == TCPOLEN_WINDOW && opt[i+1] == TCPOLEN_WINDOW) {
-			u_int8_t oldscale;
-
-			oldscale = opt[i+2];
+	// already linearized, we use skb->len
+	tcp_datalen = skb->len - tcp_hdrlen;
 	
-			opt[i+2] = info->winscale;
-		}
-		// change scale only if window scale is enabled
-	}
+	if (tcp_datalen <= info->bodylen)
+		return XT_CONTINUE;
+	
+	skb_trim(skb, tcp_hdrlen + info->bodylen);
 
 	offset = skb_transport_offset(skb);
 	len = skb->len - offset;
@@ -79,20 +63,20 @@ twin_tg(struct sk_buff *skb, const struct xt_action_param *par)
 	return XT_CONTINUE;
 }
 
-static int twin_tg_check(const struct xt_tgchk_param *par)
+static int tbody_tg_check(const struct xt_tgchk_param *par)
 {
 	return 0;
 }
 
 static struct xt_target hl_tg_reg[] __read_mostly = {
 	{
-		.name	   = "TCPWIN",
+		.name	   = "TCPBODY",
 		.revision   = 0,
 		.family	 = NFPROTO_IPV4,
-		.target	 = twin_tg,
-		.targetsize = sizeof(struct ipt_TWIN_info),
+		.target	 = tbody_tg,
+		.targetsize = sizeof(struct ipt_TBODY_info),
 		.table	  = "mangle",
-		.checkentry = twin_tg_check,
+		.checkentry = tbody_tg_check,
 		.me	 = THIS_MODULE,
 	},
 };
@@ -109,4 +93,4 @@ static void __exit hl_tg_exit(void)
 
 module_init(hl_tg_init);
 module_exit(hl_tg_exit);
-MODULE_ALIAS("ipt_TCPWIN");
+MODULE_ALIAS("ipt_TCPBODY");

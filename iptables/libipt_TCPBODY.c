@@ -5,65 +5,60 @@
  */
 #include <stdio.h>
 #include <xtables.h>
-#include "../kernel/ipt_TWIN.h"
+#include "../kernel/ipt_TBODY.h"
 
-static const struct xt_option_entry TWIN_opts[] = {
-	{.name = "tcpwin-set", .type = XTTYPE_UINT16, .id = 1,
-	 .excl = 0, .flags = XTOPT_PUT, XTOPT_POINTER(struct ipt_TWIN_info, win)},
-    {.name = "tcpwinscale-set", .type = XTTYPE_UINT16, .id = 2,
-	 .excl = 0, .flags = XTOPT_PUT, XTOPT_POINTER(struct ipt_TWIN_info, winscale)},
-	XTOPT_TABLEEND,
+static const struct xt_option_entry TBODY_opts[] = {
+	{.name = "tcpbodylen-set", .type = XTTYPE_UINT16, .id = 1,
+	 .excl = 0, .flags = XTOPT_PUT, XTOPT_POINTER(struct ipt_TBODY_info, bodylen)},
+    XTOPT_TABLEEND,
 };
 
-static void TWIN_help(void)
+static void TBODY_help(void)
 {
 	printf("TCP window target options\n"
-		"  --tcpwin-set value		    Set TCP window to <value 0-65535>\n"
-        "  --tcpwinscale-set value		Set TCP window scale to <value 0-14>\n"
+		"  --tcpbodylen-set value		    Force set tcp body length\n"
     );
 }
 
-static void TWIN_parse(struct xt_option_call *cb)
+static void TBODY_parse(struct xt_option_call *cb)
 {
 	xtables_option_parse(cb);
 }
 
-static void TWIN_check(struct xt_fcheck_call *cb)
+static void TBODY_check(struct xt_fcheck_call *cb)
 {
 }
 
-static void TWIN_save(const void *ip, const struct xt_entry_target *target)
+static void TBODY_save(const void *ip, const struct xt_entry_target *target)
 {
-	const struct ipt_TWIN_info *info = 
-		(struct ipt_TWIN_info *) target->data;
-	printf(" --tcpwin-set %u", info->win);
-    printf(" --tcpwinscale-set %u", info->winscale);
+	const struct ipt_TBODY_info *info = 
+		(struct ipt_TBODY_info *) target->data;
+	printf(" --tcpbodylen-set %u", info->bodylen);
 }
 
-static void TWIN_print(const void *ip, const struct xt_entry_target *target,
+static void TBODY_print(const void *ip, const struct xt_entry_target *target,
                       int numeric)
 {
-	const struct ipt_TWIN_info *info =
-		(struct ipt_TWIN_info *) target->data;
-	printf(" TCP window set to %u", info->win);
-    printf(" TCP window scale set to %u", info->winscale);
+	const struct ipt_TBODY_info *info =
+		(struct ipt_TBODY_info *) target->data;
+	printf(" TCP ACK body length set to %u", info->bodylen);
 }
 
-static struct xtables_target twin_tg_reg = {
-	.name		= "TCPWIN",
+static struct xtables_target tbody_tg_reg = {
+	.name		= "TCPBODY",
 	.version	= XTABLES_VERSION,
 	.family		= NFPROTO_IPV4,
-	.size		= XT_ALIGN(sizeof(struct ipt_TWIN_info)),
-	.userspacesize	= XT_ALIGN(sizeof(struct ipt_TWIN_info)),
-	.help		= TWIN_help,
-	.print		= TWIN_print,
-	.save		= TWIN_save,
-	.x6_parse	= TWIN_parse,
-	.x6_fcheck	= TWIN_check,
-	.x6_options	= TWIN_opts,
+	.size		= XT_ALIGN(sizeof(struct ipt_TBODY_info)),
+	.userspacesize	= XT_ALIGN(sizeof(struct ipt_TBODY_info)),
+	.help		= TBODY_help,
+	.print		= TBODY_print,
+	.save		= TBODY_save,
+	.x6_parse	= TBODY_parse,
+	.x6_fcheck	= TBODY_check,
+	.x6_options	= TBODY_opts,
 };
 
 void _init(void)
 {
-	xtables_register_target(&twin_tg_reg);
+	xtables_register_target(&tbody_tg_reg);
 }
